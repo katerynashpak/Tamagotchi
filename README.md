@@ -1,2 +1,2 @@
 # Tamagotchi
-Embedded project with ARM Cortex-M4
+embedded project with ARM Cortex-M4
