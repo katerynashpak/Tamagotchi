@@ -1,11 +1,15 @@
 #ifndef PET_H
 #define PET_H
 
+
+#include <stdint.h>
+
 typedef struct {
-    uint32_t happiness;
-    uint32_t fullness;
-    uint32_t cleanness;
-    uint32_t health;
+    uint8_t bars[4];
 } Pet_t;
 
+
+
 void pet_tick(void);
+
+#endif
