@@ -1,5 +1,6 @@
 # Ignore files
-
+plan.c
+.theia-workspace
 
 # Ignore installers
 arm-gnu-toolchain-15.3.rel1-mingw-w64-i686-aarch64-none-elf.msi
