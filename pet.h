@@ -1,5 +1,5 @@
-#ifndef PET_H
-#define PET_H
+#ifndef __PET_H__
+#define __PET_H__
 
 
 #include <stdint.h>
@@ -12,4 +12,4 @@ typedef struct {
 
 void pet_tick(void);
 
-#endif
+#endif // __PET_H__

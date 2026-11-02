@@ -1,9 +1,8 @@
-/**************************************************************************/ /**
-* @file    tm4c.h
-* @brief
-* @version
-* @date
-******************************************************************************/
+
+#ifndef __TM4C_H__
+#define __TM4C_H__
+
+#include <stdint.h>
 
 typedef struct {                    // GPIO Register Map,
   volatile uint32_t DATA_Bits[255]; // 1 KB alias window
@@ -69,3 +68,6 @@ typedef struct {
 #define RCGCI2C (*((volatile uint32_t *)0x400FE620))   // clock gating control
 #define GPIOB_AHB ((GPIO_Type *)0x40059000)             //PB ports
 #define I2C0 ((I2C_Type *)0x40020000)                   //I2C Master Slave Address (I2CMSA)
+
+
+#endif // __TM4C_H__

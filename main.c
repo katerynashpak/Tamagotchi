@@ -10,6 +10,7 @@
 #include "tm4c.h"
 //#include "tm4c123gh6pm.h"
 #include "pet.h"
+#include "display.h"
 
 
 /* on-board LEDs bitmasks for Port A */
@@ -93,7 +94,7 @@ int main(void){
     uint8_t idx;
     uint8_t is_dead = 0;
     uint8_t i = 0;
-    volatile int n = 0;
+    // volatile int n = 0;
     volatile int d = 0;
 
     RCGCGPIO  |= (1U << 0); //clock, set Bit 0 for Port A
@@ -117,7 +118,6 @@ int main(void){
     }
     //end bus clear
 
-
     //PA - RGB LED
     GPIOA_AHB->DIR |= (LED_RED | LED_GREEN | LED_BLUE); //PA2, PA3, PA4
     GPIOA_AHB->DEN |= (LED_RED | LED_GREEN | LED_BLUE); //connect to digital pads
@@ -126,21 +126,18 @@ int main(void){
     SysTick->VAL = 0; //clear current count
     SysTick->CTRL = 0x7; //enable & interrupt & clock -> 111 is 7
 
-    
+    // //PB - I2C Display
+    // GPIOB_AHB->AFSEL |= (SCL | SDA); //PB2, PB3
+    // GPIOB_AHB->PCTL  |= (3U << 8) | (3U << 12); //both 3 bits, PMC2 bit 8, PMC3 bit 12
+    // GPIOB_AHB->DEN   |= (SCL | SDA);
+    // GPIOB_AHB->ODR   |= SDA; //open-drain operation
 
-    //PB - I2C Display
-    GPIOB_AHB->AFSEL |= (SCL | SDA); //PB2, PB3
-    GPIOB_AHB->PCTL  |= (3U << 8) | (3U << 12); //both 3 bits, PMC2 bit 8, PMC3 bit 12
-    GPIOB_AHB->DEN   |= (SCL | SDA);
-    GPIOB_AHB->ODR   |= SDA; //open-drain operation
-
-    I2C0->MCR = 0x10;   //master mode
-    I2C0->MTPR = 24;     // for ~100 kHz at 16 MHz
+    // I2C0->MCR = 0x10;   //master mode
+    // I2C0->MTPR = 24;     // for ~100 kHz at 16 MHz
 
     Pet_t pet = {{5,5,5,5}}; //0-health, 1-full, 2-clean, 3-happy
 
     srand(ms_counter);
-
 
     //test LED
     // GPIOA_AHB->DATA_Bits[LED_RED] = LED_RED;
@@ -148,329 +145,15 @@ int main(void){
     // GPIOA_AHB->DATA_Bits[LED_BLUE] = LED_BLUE;
     //end test LED
 
-
     //test I2C Display
-    //command mode
 
-    //0xAE - display off
-    I2C0->MSA = (0x3C << 1);    //adr + write bit 0
-    I2C0->MDR = 0x00;           //control byte
-    I2C0->MCS = 0x03;           //start + run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xAE;           //display on //A5 all on test
-    I2C0->MCS = 0x05;           //start + stop
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-        GPIOA_AHB->DATA = LED_RED;
-        while (1);
-    }
-
-    //0xD5 0x80 clock
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xD5;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x80;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xA8 0x3F multiplex
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xA8;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x3F;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xD3 0x00 offset
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xD3;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0x40 start line
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x40;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0x8D 0x14 charge pump on
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x8D;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x14;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0x20 0x00 horiz adr
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x20;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xA1 segment remap
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xA1;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xC8 COM scan
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xC8;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xDA 0x12 COM pins
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xDA;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x12;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0x81 0xCF contrast
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x81;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xCF;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xD9 0xF1 pre-charge
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xD9;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xF1;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xDB 0x40 VCOM
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xDB;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0x40;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-        GPIOA_AHB->DATA = LED_RED;
-        while (1);
-    }
-
-    //0xA4 resume RAM
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xA4;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xA6 normal display
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xA6;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-    GPIOA_AHB->DATA = LED_RED;
-    while (1);
-}
-
-    //0xAF segment remap
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-    I2C0->MDR = 0xAF;           //display on
-    I2C0->MCS = 0x05;           //start + stop
-    while(I2C0->MCS & 0x01);
-    if (I2C0->MCS & 0x02) {
-        GPIOA_AHB->DATA = LED_RED;
-        while (1);
-    }
-
-
-
-    //col adr and page adr
-
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0x21;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x01;          
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0x7F;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-
-    if (I2C0->MCS & 0x02) {
-        GPIOA_AHB->DATA = LED_RED;
-        while (1);
-    }
-
-
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0x22;           
-    I2C0->MCS = 0x01;           //run
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x01;          
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0x07;           
-    I2C0->MCS = 0x05;          
-    while(I2C0->MCS & 0x01);
-
-    if (I2C0->MCS & 0x02) {
-        GPIOA_AHB->DATA = LED_RED;
-        while (1);
-    }
-
-
-
-    //data mode
-    I2C0->MSA = (0x3C << 1);
-    I2C0->MDR = 0x40;           //control byte = data
-    I2C0->MCS = 0x03;           //start + run
-    while(I2C0->MCS & 0x01);
-
-    for(n = 0; n < 102400; n++){
-        I2C0->MDR = 0xFF;           
-        I2C0->MCS = 0x01;       //run
-        while(I2C0->MCS & 0x01);
-    }
-    I2C0->MCS = 0x04;           //stop
-    while(I2C0->MCS & 0x01);
-
-
-    //last test:
-    I2C0->MSA = (0x3C << 1);    
-    I2C0->MDR = 0x00;           
-    I2C0->MCS = 0x03;           
-    while(I2C0->MCS & 0x01);
-
-    I2C0->MDR = 0xA5;           
-    I2C0->MCS = 0x05;           
-    while(I2C0->MCS & 0x01);
-
-
-    if(I2C0->MCS & 0x02){ //if error -> red led on
-        GPIOA_AHB->DATA_Bits[LED_RED] = LED_RED;
-        while(1);
-    }
-
+    display_init();
+    display_init_seq();
+    display_clear();
+    //display_set_pixel(4,4);
+    
+    
     //end test I2C Display
-
 
     while(1){
        // led
