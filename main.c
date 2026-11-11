@@ -147,11 +147,14 @@ int main(void){
 
     //test I2C Display
 
+    GPIOB_AHB->DATA_Bits[SDA] = SDA; //release SDA
+    GPIOB_AHB->DATA_Bits[SCL] = SCL; //SCL high
+
     display_init();
     display_init_seq();
+    //display_fill(0xFF);
     display_clear();
-    //display_set_pixel(4,4);
-    
+    display_draw_pet(&pet); 
     
     //end test I2C Display
 
@@ -227,7 +230,10 @@ int main(void){
                 set_color(COLOR_GREEN);
             }
 
-        }          
+        }    
+
+        display_draw_pet(&pet);  
+        
     }
 
 }
