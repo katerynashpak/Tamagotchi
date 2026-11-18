@@ -8,9 +8,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "tm4c.h"
-//#include "tm4c123gh6pm.h"
 #include "pet.h"
 #include "display.h"
+#include "keys.h"
 
 
 /* on-board LEDs bitmasks for Port A */
@@ -22,6 +22,8 @@
 #define SCL         (1U << 2)     //PB2
 #define SDA         (1U << 3)     //PB3
 
+#define NUM_BARS    4
+#define MAX_BAR     5
 
 volatile uint16_t LIMIT = 50000; //limit of the event duration
 volatile uint32_t ms_counter = 0; //volatile since declared in the interrupt
@@ -85,11 +87,6 @@ Color_t color_from_event(uint8_t event){
 
 
 int main(void){
-    
-    //
-    // Hello!
-    //
-    //UARTprintf("Hello, world!\n");
 
     uint8_t idx;
     uint8_t is_dead = 0;
@@ -104,11 +101,25 @@ int main(void){
     RCGCI2C   |= (1U << 0); //I2C0 module set bit 0
     GPIOHBCTL |= (1U << 1); //hpb, set Bit 1 for Port B
 
-    //bus cleae
-    GPIOB_AHB->AFSEL &= ~(SCL | SDA);   // back to GPIO
+    RCGCGPIO  |= (1U << 3); //clock, set Bit 3 for Port D
+    GPIOHBCTL |= (1U << 3); //hpb, set Bit 3 for Port D
+
+    for (d = 0; d < 100; d++);
+
+    //bus clear
+    GPIOB_AHB->AFSEL &= ~(SCL | SDA);   // back to GPIO //clear
     GPIOB_AHB->DIR   |= SCL;            // SCL as output
     GPIOB_AHB->ODR   |= SDA;            // SDA open-drain
     GPIOB_AHB->DEN   |= (SCL | SDA);
+
+    for (d = 0; d < 100; d++);
+
+    GPIOD_AHB->DIR   &= ~0X0F;          // PD0-PD3 inputs //clear
+    GPIOD_AHB->DEN   |= 0X0F;           // dig enable //set
+    GPIOD_AHB->PUR   |= 0X0F;           // internal pull-ups //set
+
+    // volatile uint32_t *pur = (volatile uint32_t *)0x4005B510;
+    // *pur |= 0x0F;
 
     for (i = 0; i < 9; i++) {
         GPIOB_AHB->DATA_Bits[SCL] = 0;
@@ -139,31 +150,46 @@ int main(void){
 
     srand(ms_counter);
 
-    //test LED
+    // ---test LED---
     // GPIOA_AHB->DATA_Bits[LED_RED] = LED_RED;
     // GPIOA_AHB->DATA_Bits[LED_GREEN] = LED_GREEN;
     // GPIOA_AHB->DATA_Bits[LED_BLUE] = LED_BLUE;
-    //end test LED
+    // ---end test LED---
 
-    //test I2C Display
 
+    // ---test I2C Display---
     GPIOB_AHB->DATA_Bits[SDA] = SDA; //release SDA
     GPIOB_AHB->DATA_Bits[SCL] = SCL; //SCL high
-
     display_init();
     display_init_seq();
     //display_fill(0xFF);
     display_clear();
     display_draw_pet(&pet); 
-    
-    //end test I2C Display
+    // ---end test I2C Display---
 
     while(1){
-       // led
+        // led
         //GPIOA_AHB->DATA_Bits[LED_GREEN] = LED_GREEN; //happy
 
+        // ---test keys---
+        static uint32_t prev = 0x0F; //all high
+        uint32_t keys = keys_read(); //read which key is pressed
+        uint32_t pressed = prev & ~keys; //were 1 and now 0 (key went from released to pressed / falling edge)
+
+        for(i = 0; i < NUM_BARS; i++){
+            if(pressed & (1U << i)) { //bits 0-3
+                if(pet.bars[i] < MAX_BAR){
+                    pet.bars[i]++;
+                    display_draw_pet(&pet); //draw only after event
+                }
+            }
+        }
+        prev = keys; //update, reset keys back to not pressed
+
+        // ---end test keys---
+
         //pick random indicator bar to decrement every 30s
-        if(sec_counter >= 5){ //set to >= 30
+        if(sec_counter >= 5){ //set to >= 30 seconds
             sec_counter = 0; //reset
             eventActive = 1; //true
             eventTimer = 0;
@@ -177,6 +203,12 @@ int main(void){
             if(pet.bars[idx] > 0){
                 pet.bars[idx]--;
                 lastEvent = idx; //idx is the index of one of the 4 bars (0-health, ...)
+                
+                display_draw_pet(&pet); //draw only after event
+
+                if(pet.bars[idx] == 0){
+                    display_draw_dead();
+                }
             }
         }
 
@@ -195,7 +227,7 @@ int main(void){
 
         for(i = 1; i < 4; i++){
             if(pet.bars[i] < lowest){
-                lowest = pet.bars[i];
+                 lowest = pet.bars[i];
                 lowest_idx = i;
             }
         }
@@ -231,8 +263,6 @@ int main(void){
             }
 
         }    
-
-        display_draw_pet(&pet);  
         
     }
 

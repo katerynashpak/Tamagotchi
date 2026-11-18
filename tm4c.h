@@ -62,12 +62,13 @@ typedef struct {
 
 #define RCGCGPIO (*((volatile uint32_t *)0x400FE608))   // clock gating control
 #define GPIOHBCTL (*((volatile uint32_t *)0x400FE06C))  // high performance bus control
-#define GPIOA_AHB ((GPIO_Type *)0x40058000)             //PA ports
+#define GPIOA_AHB ((GPIO_Type *)0x40058000)             // PA ports
 #define SysTick ((SysTick_Type *)0xE000E010)
 
-#define RCGCI2C (*((volatile uint32_t *)0x400FE620))   // clock gating control
-#define GPIOB_AHB ((GPIO_Type *)0x40059000)             //PB ports
-#define I2C0 ((I2C_Type *)0x40020000)                   //I2C Master Slave Address (I2CMSA)
+#define RCGCI2C (*((volatile uint32_t *)0x400FE620))    // clock gating control
+#define GPIOB_AHB ((GPIO_Type *)0x40059000)             // PB ports
+#define I2C0 ((I2C_Type *)0x40020000)                   // I2C Master Slave Address (I2CMSA)
 
+#define GPIOD_AHB ((GPIO_Type *)0x4005B000)             // PD ports
 
 #endif // __TM4C_H__
