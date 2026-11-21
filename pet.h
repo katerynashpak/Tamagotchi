@@ -6,6 +6,7 @@
 
 typedef struct {
     uint8_t bars[4];
+    uint32_t days_alive;
 } Pet_t;
 
 

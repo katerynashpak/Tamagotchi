@@ -25,9 +25,12 @@
 #define NUM_BARS    4
 #define MAX_BAR     5
 
+#define SEC_IN_DAY 5 // game day is 60 seconds
+
 volatile uint16_t LIMIT = 50000; //limit of the event duration
 volatile uint32_t ms_counter = 0; //volatile since declared in the interrupt
 volatile uint32_t sec_counter = 0; // 1s increment, game clock
+volatile uint32_t day_sec = 0;
 
 volatile uint8_t eventActive = 0; //0-> false,  1-> true
 volatile uint32_t eventTimer = 0; 
@@ -39,18 +42,18 @@ typedef enum{
     COLOR_BLUE = 1,     //HEALTH
     COLOR_ORANGE = 2,   //FULL
     COLOR_PURPLE = 3,   //CLEAN
-    COLOR_GREEN = 4,    //HAPPY
+    COLOR_GREEN = 4,    //JOY
     COLOR_RED = 5,      //DEAD
 
 } Color_t;
 
 void SysTick_Handler(void){
-    //pet_tick();
     
     ms_counter++;
     if(ms_counter >= 1000){
         ms_counter = 0;
         sec_counter++; // 1s increment, game clock
+        day_sec++; //count seconds in a day and then chech less than SEC_IN_DAY to count and display days alive
     }
     
 }
@@ -65,7 +68,7 @@ void set_color(uint8_t color){
         GPIOA_AHB->DATA = LED_RED | LED_GREEN;
     }else if(color == COLOR_PURPLE){            //clean
         GPIOA_AHB->DATA = LED_BLUE | LED_RED;
-    }else if(color == COLOR_GREEN){             //happy
+    }else if(color == COLOR_GREEN){             //joy
         GPIOA_AHB->DATA = LED_GREEN;
     }else if(color == COLOR_RED){               //dead
         GPIOA_AHB->DATA = LED_RED;
@@ -118,9 +121,6 @@ int main(void){
     GPIOD_AHB->DEN   |= 0X0F;           // dig enable //set
     GPIOD_AHB->PUR   |= 0X0F;           // internal pull-ups //set
 
-    // volatile uint32_t *pur = (volatile uint32_t *)0x4005B510;
-    // *pur |= 0x0F;
-
     for (i = 0; i < 9; i++) {
         GPIOB_AHB->DATA_Bits[SCL] = 0;
         for (d = 0; d < 100; d++);
@@ -137,25 +137,9 @@ int main(void){
     SysTick->VAL = 0; //clear current count
     SysTick->CTRL = 0x7; //enable & interrupt & clock -> 111 is 7
 
-    // //PB - I2C Display
-    // GPIOB_AHB->AFSEL |= (SCL | SDA); //PB2, PB3
-    // GPIOB_AHB->PCTL  |= (3U << 8) | (3U << 12); //both 3 bits, PMC2 bit 8, PMC3 bit 12
-    // GPIOB_AHB->DEN   |= (SCL | SDA);
-    // GPIOB_AHB->ODR   |= SDA; //open-drain operation
-
-    // I2C0->MCR = 0x10;   //master mode
-    // I2C0->MTPR = 24;     // for ~100 kHz at 16 MHz
-
-    Pet_t pet = {{5,5,5,5}}; //0-health, 1-full, 2-clean, 3-happy
+    Pet_t pet = {{5,5,5,5}, 1}; //0-health, 1-full, 2-clean, 3-joy
 
     srand(ms_counter);
-
-    // ---test LED---
-    // GPIOA_AHB->DATA_Bits[LED_RED] = LED_RED;
-    // GPIOA_AHB->DATA_Bits[LED_GREEN] = LED_GREEN;
-    // GPIOA_AHB->DATA_Bits[LED_BLUE] = LED_BLUE;
-    // ---end test LED---
-
 
     // ---test I2C Display---
     GPIOB_AHB->DATA_Bits[SDA] = SDA; //release SDA
@@ -168,19 +152,60 @@ int main(void){
     // ---end test I2C Display---
 
     while(1){
-        // led
-        //GPIOA_AHB->DATA_Bits[LED_GREEN] = LED_GREEN; //happy
 
         // ---test keys---
         static uint32_t prev = 0x0F; //all high
         uint32_t keys = keys_read(); //read which key is pressed
         uint32_t pressed = prev & ~keys; //were 1 and now 0 (key went from released to pressed / falling edge)
 
+        is_dead = 0;
+        for(i = 0; i < 4; i++){
+            if(pet.bars[i] == 0){
+                is_dead = 1;
+                break;
+            }
+        }
+                
+        if(is_dead){
+            set_color(COLOR_RED); //solid
+            
+            if(pressed){
+                //reset game
+                pet.bars[0] = pet.bars[1] = pet.bars[2] = pet.bars[3] = MAX_BAR;
+                pet.days_alive = 1;
+                day_sec = 0;
+                sec_counter = 0;
+                eventActive = 0;
+                is_dead = 0; //false
+                display_clear();
+                display_draw_pet(&pet);
+                display_draw_number(68, 1, pet.days_alive);
+
+            }
+            prev = keys;
+            continue; //do not count as pet event, skip
+
+        }
+
+
+        if(!is_dead && day_sec >= SEC_IN_DAY){
+            day_sec = 0;
+            pet.days_alive++;
+            display_draw_number(68, 1, pet.days_alive);
+        }
+
+
         for(i = 0; i < NUM_BARS; i++){
             if(pressed & (1U << i)) { //bits 0-3
                 if(pet.bars[i] < MAX_BAR){
                     pet.bars[i]++;
                     display_draw_pet(&pet); //draw only after event
+                    display_event(i); //draw event - sleep, feed, bathe, play
+
+                    uint32_t start = ms_counter;
+                    while((ms_counter - start) < 1000){
+                        //event frame stays up
+                    }
                 }
             }
         }
@@ -194,8 +219,6 @@ int main(void){
             eventActive = 1; //true
             eventTimer = 0;
 
-            //idx = rand() % 4; //pick from bars array idx 0-3
-
             static uint8_t next = 0;
             idx = next;
             next = (next+1) % 4;
@@ -207,36 +230,24 @@ int main(void){
                 display_draw_pet(&pet); //draw only after event
 
                 if(pet.bars[idx] == 0){
-                    display_draw_dead();
+                    display_mood(0);
                 }
             }
         }
-
-        //check if dead
-        is_dead = 0;
-        for(i = 0; i < 4; i++){
-            if(pet.bars[i] == 0){
-                is_dead = 1; //true
-                break; //out of the flashing / event loop
-            }
-        }
-
+        
         //check lowest bar for state assignment
         uint8_t lowest = pet.bars[0];
         uint8_t lowest_idx = 0; //health
 
         for(i = 1; i < 4; i++){
             if(pet.bars[i] < lowest){
-                 lowest = pet.bars[i];
+                lowest = pet.bars[i];
                 lowest_idx = i;
             }
         }
        
-                
-        //LED
-        if(is_dead){
-            set_color(COLOR_RED); //solid
-        }else if(eventActive){
+        
+        if(eventActive){
             if((eventTimer / 20000) % 2 == 0){ //ON-OFF blinking
                 set_color(color_from_event(lastEvent)); //color depends on which of the 4 bars decreased (type of event fired)
             }else{
@@ -248,9 +259,10 @@ int main(void){
                 eventActive = 0; //false
                 GPIOA_AHB->DATA = 0; //turn all off
             }
+            
         }else{
             //state -> solid color
-            
+
             //check lowest
             if(lowest_idx == 0){
                 set_color(COLOR_BLUE);
@@ -261,6 +273,9 @@ int main(void){
             }else if(lowest_idx == 3){
                 set_color(COLOR_GREEN);
             }
+
+            //draw mood - happy, ok, sad, dead
+            display_mood(lowest);
 
         }    
         
