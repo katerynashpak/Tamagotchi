@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include "keys.h"
 #include "tm4c.h"
-//#include "pet.h"
 
 /* on-board keys bitmasks for Port D */
 #define sleep   (1U << 0)     //PD0

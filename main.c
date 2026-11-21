@@ -25,7 +25,7 @@
 #define NUM_BARS    4
 #define MAX_BAR     5
 
-#define SEC_IN_DAY 5 // game day is 60 seconds
+#define SEC_IN_DAY 10 // game day is 10 seconds
 
 volatile uint16_t LIMIT = 50000; //limit of the event duration
 volatile uint32_t ms_counter = 0; //volatile since declared in the interrupt
@@ -213,8 +213,8 @@ int main(void){
 
         // ---end test keys---
 
-        //pick random indicator bar to decrement every 30s
-        if(sec_counter >= 5){ //set to >= 30 seconds
+        //pick random indicator bar to decrement every few seconds
+        if(sec_counter >= 3){
             sec_counter = 0; //reset
             eventActive = 1; //true
             eventTimer = 0;
